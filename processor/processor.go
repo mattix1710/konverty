@@ -9,7 +9,15 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/schollz/progressbar/v3"
 )
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 type PSNR struct {
 	Average float64
@@ -18,7 +26,7 @@ type PSNR struct {
 }
 
 // Helper function to process a line and update progress/PSNR values
-func processLine(line string, progressRegex, psnrRegex *regexp.Regexp, totalFrames int, avgPSNR, minPSNR, maxPSNR *float64, foundPSNR *bool) {
+func processLine_old(line string, progressRegex, psnrRegex *regexp.Regexp, totalFrames int, avgPSNR, minPSNR, maxPSNR *float64, foundPSNR *bool) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return
@@ -50,6 +58,46 @@ func processLine(line string, progressRegex, psnrRegex *regexp.Regexp, totalFram
 	if psnrMatches := psnrRegex.FindStringSubmatch(line); psnrMatches != nil {
 		fmt.Println("INFO: parsing PSNR")
 		fmt.Printf("INFO: parsing line:%s\n", line)
+		var parseErr error
+		avgStr := psnrMatches[1]
+		minStr := psnrMatches[2]
+		maxStr := psnrMatches[3]
+
+		*avgPSNR, parseErr = strconv.ParseFloat(avgStr, 64)
+		if parseErr == nil {
+			*minPSNR, parseErr = strconv.ParseFloat(minStr, 64)
+			if parseErr == nil {
+				*maxPSNR, parseErr = strconv.ParseFloat(maxStr, 64)
+				if parseErr == nil {
+					*foundPSNR = true
+				}
+			}
+		}
+	}
+}
+
+func processLine(line string, progressRegex, psnrRegex *regexp.Regexp, totalFrames int, avgPSNR, minPSNR, maxPSNR *float64, foundPSNR *bool, progressBar *progressbar.ProgressBar) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return
+	}
+
+	if matches := progressRegex.FindStringSubmatch(line); matches != nil {
+		frameStr := strings.TrimSpace(matches[1])
+		framesCountInt, err := strconv.Atoi(frameStr)
+		check(err)
+		fpsStr := matches[2]
+		timeStr := matches[3]
+		speedStr := matches[4]
+		_ = fpsStr
+		_ = timeStr
+		_ = speedStr
+
+		progressBar.Set(framesCountInt)
+	}
+
+	// Parse final PSNR summary (appears at the end)
+	if psnrMatches := psnrRegex.FindStringSubmatch(line); psnrMatches != nil {
 		var parseErr error
 		avgStr := psnrMatches[1]
 		minStr := psnrMatches[2]
@@ -112,6 +160,13 @@ func Get_PSNR(orig string, processed string) PSNR {
 		reader := bufio.NewReader(stderr)
 		var lineBuf strings.Builder
 
+		processingProgress := progressbar.NewOptions(int(totalFrames),
+			progressbar.OptionEnableColorCodes(true),
+			progressbar.OptionSetDescription("[yellow]Processing PSNR[reset]"),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowElapsedTimeOnFinish(),
+			progressbar.OptionSetTheme(progressbar.ThemeUnicode))
+
 		for {
 			b, err := reader.ReadByte()
 			if err != nil {
@@ -120,29 +175,28 @@ func Get_PSNR(orig string, processed string) PSNR {
 				}
 				// Process remaining buffer
 				if lineBuf.Len() > 0 {
-					processLine(lineBuf.String(), progressRegex, psnrRegex, totalFrames, &avgPSNR, &minPSNR, &maxPSNR, &foundPSNR)
+					processLine(lineBuf.String(), progressRegex, psnrRegex, totalFrames, &avgPSNR, &minPSNR, &maxPSNR, &foundPSNR, processingProgress)
 				}
+				processingProgress.Finish()
 				break
 			}
 
-			// fmt.Println(lineBuf.String())
-
-			if b == '\r' {
-				// Carriage return - process line and clear buffer
-				line := lineBuf.String()
-				if len(line) > 0 {
-					processLine(line, progressRegex, psnrRegex, totalFrames, &avgPSNR, &minPSNR, &maxPSNR, &foundPSNR)
-					lineBuf.Reset()
-				}
-			} else if b == '\n' {
-				// Newline - process line and clear buffer
-				line := lineBuf.String()
-				if len(line) > 0 {
-					processLine(line, progressRegex, psnrRegex, totalFrames, &avgPSNR, &minPSNR, &maxPSNR, &foundPSNR)
-					lineBuf.Reset()
-				}
-			} else {
+			if b != '\r' && b != '\n' {
+				// if there was no NL or CR character - just append the data
 				lineBuf.WriteByte(b)
+				continue
+			}
+
+			// Processing line when CR/NL character detected
+			line := lineBuf.String()
+			if len(line) > 0 {
+				// If line does not start with "frame=" or "[Parsed_psnr" - reset and continue
+				if !strings.HasPrefix(line, "frame=") && !strings.HasPrefix(line, "[Parsed_psnr") {
+					lineBuf.Reset()
+					continue
+				}
+				processLine(line, progressRegex, psnrRegex, totalFrames, &avgPSNR, &minPSNR, &maxPSNR, &foundPSNR, processingProgress)
+				lineBuf.Reset()
 			}
 		}
 	}()
