@@ -92,38 +92,3 @@ func GetTotalFrames(file string) int {
 	framesCountInt, _ := strconv.Atoi(framesCountStr)
 	return framesCountInt
 }
-
-type PSNR struct {
-	average float64
-	min     float64
-	max     float64
-}
-
-func Get_PSNR(orig string, processed string) PSNR {
-	probe_args := []string{
-		"ffmpeg",
-		"-i", orig,
-		"-i", processed,
-		"-lavfi", "psnr",
-		"-f", "null",
-		"-",
-	}
-
-	cmd := exec.Command(probe_args[0], probe_args[1:]...)
-
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-
-	results, err := cmd.Output()
-	if err != nil {
-		fmt.Printf("Error running ffmpeg: %v\n", err)
-		if stderr.Len() > 0 {
-			fmt.Printf("ffmpeg stderr: %s\n", stderr.String())
-		}
-		return PSNR{}
-	}
-
-	fmt.Println(results)
-
-	return PSNR{}
-}
