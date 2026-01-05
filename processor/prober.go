@@ -92,3 +92,35 @@ func GetTotalFrames(file string) int {
 	framesCountInt, _ := strconv.Atoi(framesCountStr)
 	return framesCountInt
 }
+
+// https://superuser.com/questions/1381642/ffprobe-count-video-and-audio-streams-tracks
+// ffprobe -i yourFile.mp4 -show_entries stream=channels -select_streams a:0 -of compact=p=0:nk=1 -v 0
+func AudioChannelsQuantity(file string) int {
+	probeArgs := []string{
+		"ffprobe",
+		"-i", file,
+		"-show_entries",
+		"stream=channels",
+		"-select_streams", "a:0",
+		"-of", "compact=p=0:nk=1",
+		"-v", "0",
+	}
+
+	cmd := exec.Command(probeArgs[0], probeArgs[1:]...)
+
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+
+	results, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Error running ffprobe: %v\n", err)
+		if stderr.Len() > 0 {
+			fmt.Printf("ffprobe stderr: %s\n", stderr.String())
+		}
+		return -1
+	}
+
+	channelCountStr := strings.TrimSpace(string(results))
+	channelCountInt, _ := strconv.Atoi(channelCountStr)
+	return channelCountInt
+}
