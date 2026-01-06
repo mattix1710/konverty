@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -241,6 +242,23 @@ func Convert(orig string, out_file string) bool {
 		out_file,
 	}
 
+	// check whether out_file exists
+	if checkPath(out_file) {
+		// if exists - ask user if overwrite the file (file will be removed before executing ffmpeg cmd)
+		fmt.Printf("File \"%s\" already exists. Overwrite? [y/N]: ", out_file)
+		var answer string
+		fmt.Scan(&answer)
+		if strings.TrimSpace(answer) != "y" && strings.TrimSpace(answer) != "Y" {
+			fmt.Printf("Conversion of file \"%s\" aborted due to output file existence.\n", orig)
+			return false
+		}
+		// Removing file
+		fmt.Println("DEBUG: Removing file in output location...")
+		err := os.Remove(out_file)
+		check(err)
+		fmt.Println("DEBUG: file successfully removed!")
+	}
+
 	// Retrieve total frames
 	totalFrames := GetTotalFrames(orig)
 
@@ -278,7 +296,14 @@ func Convert(orig string, out_file string) bool {
 			progressbar.OptionSetDescription("[yellow]Converting video[reset]"),
 			progressbar.OptionShowCount(),
 			progressbar.OptionShowElapsedTimeOnFinish(),
-			progressbar.OptionSetTheme(progressbar.ThemeUnicode))
+			progressbar.OptionSetTheme(progressbar.ThemeUnicode),
+			progressbar.OptionFullWidth(),
+			progressbar.OptionSetTheme(progressbar.Theme{
+				Saucer:        "[green]█[reset]",
+				SaucerPadding: "[green]░[reset]",
+				BarStart:      "[",
+				BarEnd:        "]",
+			}))
 
 		for {
 			b, err := reader.ReadByte()
