@@ -25,57 +25,6 @@ type PSNR struct {
 	Max     float64
 }
 
-// Helper function to process a line and update progress/PSNR values
-func processLine_old(line string, progressRegex, psnrRegex *regexp.Regexp, totalFrames int, avgPSNR, minPSNR, maxPSNR *float64, foundPSNR *bool) {
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return
-	}
-
-	// TODO: if line does not start with...
-
-	// Show progress (frame count, fps, time, speed, and percentage if we have total frames)
-	if matches := progressRegex.FindStringSubmatch(line); matches != nil {
-		frameStr := strings.TrimSpace(matches[1])
-		fpsStr := matches[2]
-		timeStr := matches[3]
-		speedStr := matches[4]
-
-		if totalFrames > 0 {
-			frameNum, _ := strconv.Atoi(frameStr)
-			percentage := float64(frameNum) / float64(totalFrames) * 100
-			fmt.Printf("\rProcessing... Frame: %s/%d (%.1f%%) | Time: %s | FPS: %s | Speed: %sx",
-				frameStr, totalFrames, percentage, timeStr, fpsStr, speedStr)
-		} else {
-			fmt.Printf("\rProcessing... Frame: %s | Time: %s | FPS: %s | Speed: %sx",
-				frameStr, timeStr, fpsStr, speedStr)
-		}
-	}
-
-	fmt.Printf("\nINFO: parsing line:%s\n", line)
-
-	// Parse final PSNR summary (appears at the end)
-	if psnrMatches := psnrRegex.FindStringSubmatch(line); psnrMatches != nil {
-		fmt.Println("INFO: parsing PSNR")
-		fmt.Printf("INFO: parsing line:%s\n", line)
-		var parseErr error
-		avgStr := psnrMatches[1]
-		minStr := psnrMatches[2]
-		maxStr := psnrMatches[3]
-
-		*avgPSNR, parseErr = strconv.ParseFloat(avgStr, 64)
-		if parseErr == nil {
-			*minPSNR, parseErr = strconv.ParseFloat(minStr, 64)
-			if parseErr == nil {
-				*maxPSNR, parseErr = strconv.ParseFloat(maxStr, 64)
-				if parseErr == nil {
-					*foundPSNR = true
-				}
-			}
-		}
-	}
-}
-
 func processLinePSNR(line string, progressRegex, psnrRegex *regexp.Regexp, totalFrames int, avgPSNR, minPSNR, maxPSNR *float64, foundPSNR *bool, progressBar *progressbar.ProgressBar) {
 	line = strings.TrimSpace(line)
 	if line == "" {
