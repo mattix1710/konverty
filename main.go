@@ -13,6 +13,9 @@ func main() {
 	parser := argparse.NewParser("konverty", "Simple video converter utilizing FFmpeg", nil)
 	input := parser.String("i", "input", nil)
 	input2 := parser.String("i2", "input2", nil)
+	output := parser.String("o", "output", nil)
+
+	_ = input2
 
 	if e := parser.Parse(nil); e != nil {
 		fmt.Println(e.Error())
@@ -31,7 +34,15 @@ func main() {
 	// PSNR
 	// --------------------------
 
-	fmt.Printf("Orig file: %s\nProcessed file: %s\n", *input, *input2)
+	// fmt.Printf("Orig file: %s\nProcessed file: %s\n", *input, *input2)
 
-	processor.Get_PSNR(*input, *input2)
+	// processor.GetPSNR(*input, *input2)
+
+	// --------------------------
+	// Converter
+	// --------------------------
+
+	fmt.Printf("Orig file: %s\nOut file: %s\n", *input, *output)
+	processor.Convert(*input, *output)
+
 }
