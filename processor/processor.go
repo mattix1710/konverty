@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/charmbracelet/log"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -230,7 +231,10 @@ func processLineConverter(line string, progressRegex, resultsRegex *regexp.Regex
 	}
 }
 
-func Convert(orig string, out_file string) bool {
+func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bool) bool {
+	// Check audio bitrate for a video - set maximum of 192k
+	audioBitrate := min(GetBitrate(orig), 192)
+
 	probeArgs := []string{
 		"ffmpeg",
 		"-i", orig,
@@ -238,25 +242,29 @@ func Convert(orig string, out_file string) bool {
 		"-crf", "23",
 		"-preset", "fast",
 		"-c:a", "aac",
-		"-b:a", "192k",
+		"-b:a", fmt.Sprintf("%dk", audioBitrate),
 		out_file,
 	}
 
 	// check whether out_file exists
 	if checkPath(out_file) {
 		// if exists - ask user if overwrite the file (file will be removed before executing ffmpeg cmd)
-		fmt.Printf("File \"%s\" already exists. Overwrite? [y/N]: ", out_file)
-		var answer string
-		fmt.Scan(&answer)
-		if strings.TrimSpace(answer) != "y" && strings.TrimSpace(answer) != "Y" {
-			fmt.Printf("Conversion of file \"%s\" aborted due to output file existence.\n", orig)
-			return false
+		if ifOverwriteAll {
+			logger.Warnf("File \"%s\" already exists. Overwriting...", out_file)
+		} else {
+			fmt.Printf("File \"%s\" already exists. Overwrite? [y/N]: ", out_file)
+			var answer string
+			fmt.Scan(&answer)
+			if strings.TrimSpace(answer) != "y" && strings.TrimSpace(answer) != "Y" {
+				logger.Warnf("Conversion of file \"%s\" aborted due to output file existence.\n", orig)
+				return false
+			}
 		}
 		// Removing file
-		fmt.Println("DEBUG: Removing file in output location...")
+		logger.Debug("Removing file in output location...")
 		err := os.Remove(out_file)
 		check(err)
-		fmt.Println("DEBUG: file successfully removed!")
+		logger.Debug("File successfully removed!")
 	}
 
 	// Retrieve total frames
@@ -361,4 +369,21 @@ func Convert(orig string, out_file string) bool {
 	fmt.Printf("Converting finished with total frames processed %d with average QP %f in a total of %fs :)\n", outFramesGenerated, outAvgQP, outElapsedTime)
 
 	return true
+}
+
+func ConvertBatch(in_path string, out_path string, logger *log.Logger, ifOverwriteAll bool) {
+	// Check whether out_path exists
+	if checkPath(out_path) {
+		// if exists - ask user if overwrite the directory (whole directory will be removed before further execution)
+		fmt.Printf("Directory \"%s\" already exists. Overwrite? [y/N]: ", out_path)
+		var answer string
+		fmt.Scan(&answer)
+		if strings.TrimSpace(answer) == "y" || strings.TrimSpace(answer) == "Y" {
+			// Removing directory
+			logger.Debugf("Removing output directory and all of its contents under location \"%s\"", out_path)
+			os.RemoveAll(out_path)
+			logger.Debug("Directory successfully removed!")
+		}
+	}
+	iterDirAndCopy(in_path, out_path, logger, ifOverwriteAll)
 }
