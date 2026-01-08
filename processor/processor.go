@@ -368,6 +368,16 @@ func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bo
 	// Print out some final data (??)
 	fmt.Printf("Converting finished with total frames processed %d with average QP %f in a total of %fs :)\n", outFramesGenerated, outAvgQP, outElapsedTime)
 
+	// Print info about output size vs orig size
+	fileInfo, err := os.Stat(orig)
+	check(err)
+	fileSizeIn := float64(fileInfo.Size()) / float64(1024*1024) // Get file size in MB
+	fileInfo, err = os.Stat(out_file)
+	check(err)
+	fileSizeOut := float64(fileInfo.Size()) / float64(1024*1024) // Get file size in MB
+
+	logFileSizeCheck(fileSizeIn, fileSizeOut)
+
 	return true
 }
 

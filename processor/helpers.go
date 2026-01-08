@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/log"
+	"github.com/fatih/color"
 )
 
 func checkPath(path string) bool {
@@ -119,5 +120,19 @@ func iterDir(dir string, copyDir string, logger *log.Logger) {
 			fmt.Printf("=== Exiting dir %s\n========================\n", origSubPath)
 			continue
 		}
+	}
+}
+
+func logFileSizeCheck(fileSizeIn, fileSizeOut float64) {
+	if fileSizeIn > fileSizeOut {
+		clr := color.New(color.FgGreen, color.Bold).SprintFunc()
+		sizeDiff := int64((1 - (fileSizeOut / fileSizeIn)) * 100)
+		fmt.Printf("File size shrank about %s%%! %s\n", clr(fmt.Sprintf("%d", sizeDiff)), clr(fmt.Sprintf("[%.2fMB vs %.2fMB]", fileSizeIn, fileSizeOut)))
+	} else if fileSizeIn < fileSizeOut {
+		clr := color.New(color.FgRed, color.Bold).SprintFunc()
+		sizeDiff := int64(((fileSizeOut / fileSizeIn) - 1) * 100)
+		fmt.Printf("File size rose about %s%%! %s\n", clr(fmt.Sprintf("%d", sizeDiff)), clr(fmt.Sprintf("[%.2fMB vs %.2fMB]", fileSizeIn, fileSizeOut)))
+	} else {
+		fmt.Println("File size did not change!")
 	}
 }
