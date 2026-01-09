@@ -65,6 +65,8 @@ func copyFile(src, dst string) (int64, error) {
 	}
 	defer destination.Close()
 	nBytes, err := io.Copy(destination, source)
+	// TODO: add file integrity verification - by hash (?)
+
 	return nBytes, err
 }
 
@@ -134,5 +136,36 @@ func logFileSizeCheck(fileSizeIn, fileSizeOut float64) {
 		fmt.Printf("File size rose about %s%%! %s\n", clr(fmt.Sprintf("%d", sizeDiff)), clr(fmt.Sprintf("[%.2fMB vs %.2fMB]", fileSizeIn, fileSizeOut)))
 	} else {
 		fmt.Println("File size did not change!")
+	}
+}
+
+func CheckFileConversionMatch(orig, processed string, logger *log.Logger) bool {
+	origFrameCount := GetTotalFrames(orig)
+	processedFrameCount := GetTotalFrames(processed)
+
+	// Set threshold for around 1s
+	if origFrameCount-processedFrameCount > 30 {
+		logger.Error("Files don't match! Frame count doesn't match.", "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+		return false
+	}
+
+	currPSNR := GetPSNR(orig, processed)
+
+	if currPSNR.Average >= 30.0 {
+		// Check if frame count matches
+		if origFrameCount == processedFrameCount || origFrameCount-processedFrameCount <= 2 {
+			logger.Info("Files match!", "avgPSNR", currPSNR.Average, "file1", orig, "file2", processed)
+			return true
+		} else {
+			logger.Warn("Files don't match via the frame count!", "avgPSNR", currPSNR.Average, "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+			return false
+		}
+	} else {
+		if origFrameCount == processedFrameCount {
+			logger.Warn("Files don't match! Average PSNR too low. Frame count matches.", "avgPSNR", currPSNR.Average, "file1", orig, "file2", processed)
+		} else {
+			logger.Error("Files don't match! Average PSNR too low. Frame count doesn't match.", "avgPSNR", currPSNR.Average, "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+		}
+		return false
 	}
 }

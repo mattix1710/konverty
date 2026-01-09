@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"regexp"
@@ -61,6 +62,12 @@ func processLinePSNR(line string, progressRegex, psnrRegex *regexp.Regexp, total
 				*maxPSNR, parseErr = strconv.ParseFloat(maxStr, 64)
 				if parseErr == nil {
 					*foundPSNR = true
+				} else {
+					// Check if maxPSNR == "inf" - (almost) identical frame appeared
+					if maxStr == "inf" {
+						*maxPSNR = math.Inf(1)
+						*foundPSNR = true
+					}
 				}
 			}
 		}
@@ -102,7 +109,7 @@ func GetPSNR(orig string, processed string) PSNR {
 	// Format: frame=  195 fps=189 q=-0.0 size=N/A time=00:00:06.50 bitrate=N/A speed=6.31x
 	progressRegex := regexp.MustCompile(`frame=\s*(\d+)\s+fps=([\d.]+).*?time=(\d{2}:\d{2}:\d{2}\.\d{2}).*?speed=\s*([\d.]+)x`)
 	// Format: [Parsed_psnr_0 @ ...] PSNR y:46.675758 u:48.947649 v:48.843571 average:47.297480 min:44.863792 max:51.908735
-	psnrRegex := regexp.MustCompile(`PSNR.*?average:([\d.]+).*?min:([\d.]+).*?max:([\d.]+)`)
+	psnrRegex := regexp.MustCompile(`PSNR.*?average:([\d.]+).*?min:([\d.]+).*?max:([\d.]+|inf)`)
 
 	// Read from stderr in a goroutine for real-time processing
 	wg.Add(1)
@@ -116,7 +123,16 @@ func GetPSNR(orig string, processed string) PSNR {
 			progressbar.OptionSetDescription("[yellow]Processing PSNR[reset]"),
 			progressbar.OptionShowCount(),
 			progressbar.OptionShowElapsedTimeOnFinish(),
-			progressbar.OptionSetTheme(progressbar.ThemeUnicode))
+			progressbar.OptionSetTheme(progressbar.ThemeUnicode),
+			progressbar.OptionSetPredictTime(true),
+			progressbar.OptionUseANSICodes(true),
+			progressbar.OptionFullWidth(),
+			progressbar.OptionSetTheme(progressbar.Theme{
+				Saucer:        "[purple]█[reset]",
+				SaucerPadding: "[purple]░[reset]",
+				BarStart:      "[",
+				BarEnd:        "]",
+			}))
 
 		for {
 			b, err := reader.ReadByte()
@@ -182,11 +198,6 @@ func GetPSNR(orig string, processed string) PSNR {
 		Min:     minPSNR,
 		Max:     maxPSNR,
 	}
-
-	fmt.Printf("\nPSNR Statistics:\n")
-	fmt.Printf("  Average: %.6f dB\n", result.Average)
-	fmt.Printf("  Min:     %.6f dB\n", result.Min)
-	fmt.Printf("  Max:     %.6f dB\n", result.Max)
 
 	return result
 }
@@ -306,6 +317,8 @@ func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bo
 			progressbar.OptionShowElapsedTimeOnFinish(),
 			progressbar.OptionSetTheme(progressbar.ThemeUnicode),
 			progressbar.OptionFullWidth(),
+			progressbar.OptionSetPredictTime(true),
+			progressbar.OptionUseANSICodes(true),
 			progressbar.OptionSetTheme(progressbar.Theme{
 				Saucer:        "[green]█[reset]",
 				SaucerPadding: "[green]░[reset]",
