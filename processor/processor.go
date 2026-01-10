@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/log"
+	"github.com/fatih/color"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -118,6 +119,8 @@ func GetPSNR(orig string, processed string) PSNR {
 		reader := bufio.NewReader(stderr)
 		var lineBuf strings.Builder
 
+		clrProgressBar := color.New(color.FgMagenta).SprintFunc()
+
 		processingProgress := progressbar.NewOptions(int(totalFrames),
 			progressbar.OptionEnableColorCodes(true),
 			progressbar.OptionSetDescription("[yellow]Processing PSNR[reset]"),
@@ -128,8 +131,8 @@ func GetPSNR(orig string, processed string) PSNR {
 			progressbar.OptionUseANSICodes(true),
 			progressbar.OptionFullWidth(),
 			progressbar.OptionSetTheme(progressbar.Theme{
-				Saucer:        "[purple]█[reset]",
-				SaucerPadding: "[purple]░[reset]",
+				Saucer:        clrProgressBar("█"),
+				SaucerPadding: clrProgressBar("░"),
 				BarStart:      "[",
 				BarEnd:        "]",
 			}))
@@ -394,7 +397,7 @@ func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bo
 	return true
 }
 
-func ConvertBatch(in_path string, out_path string, logger *log.Logger, ifOverwriteAll bool) {
+func BatchConvert(in_path string, out_path string, logger *log.Logger, ifOverwriteAll bool) {
 	// Check whether out_path exists
 	if checkPath(out_path) {
 		// if exists - ask user if overwrite the directory (whole directory will be removed before further execution)
@@ -409,4 +412,35 @@ func ConvertBatch(in_path string, out_path string, logger *log.Logger, ifOverwri
 		}
 	}
 	iterDirAndCopy(in_path, out_path, logger, ifOverwriteAll)
+}
+
+func BatchQualityAssessment(orig, processed string, logger *log.Logger) bool {
+	origFrameCount := GetTotalFrames(orig)
+	processedFrameCount := GetTotalFrames(processed)
+
+	// Set threshold for around 1s
+	if origFrameCount-processedFrameCount > 30 {
+		logger.Error("Files don't match! Frame count doesn't match.", "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+		return false
+	}
+
+	currPSNR := GetPSNR(orig, processed)
+
+	if currPSNR.Average >= 30.0 {
+		// Check if frame count matches
+		if origFrameCount == processedFrameCount || origFrameCount-processedFrameCount <= 2 {
+			logger.Info("Files match!", "avgPSNR", currPSNR.Average, "file1", orig, "file2", processed)
+			return true
+		} else {
+			logger.Warn("Files don't match via the frame count!", "avgPSNR", currPSNR.Average, "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+			return false
+		}
+	} else {
+		if origFrameCount == processedFrameCount {
+			logger.Warn("Files don't match! Average PSNR too low. Frame count matches.", "avgPSNR", currPSNR.Average, "file1", orig, "file2", processed)
+		} else {
+			logger.Error("Files don't match! Average PSNR too low. Frame count doesn't match.", "avgPSNR", currPSNR.Average, "frames_f1", origFrameCount, "frames_f2", processedFrameCount, "file1", orig, "file2", processed)
+		}
+		return false
+	}
 }
