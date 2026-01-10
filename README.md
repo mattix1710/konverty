@@ -15,3 +15,11 @@ Misc cmds:
 
 1. Cut out:
 `ffmpeg -i '.\Lata 2003-04 (2).avi' -ss 00:08:27 -to 00:08:35 -c copy z_wody.mp4`
+
+## TODO
+
+- [ ] Create channel for keyboard interruption - Shutting down gracefully when converting and deleting partially created video
+- [x] ~~Add logging for size differences in conversion~~
+- [ ] Add video file detection (IDEA: based on video codec format detection?)
+- [ ] Lower PSNR threshold (curr: 30)
+- [ ] Add flags based on mode type (eg. `-q` for quality assessment, `-X` for overwriting without prompting)
