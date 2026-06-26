@@ -124,3 +124,32 @@ func AudioChannelsQuantity(file string) int {
 	channelCountInt, _ := strconv.Atoi(channelCountStr)
 	return channelCountInt
 }
+
+func IsVideoFile(file string) bool {
+	// src: https://stackoverflow.com/questions/56397732/how-can-i-know-a-certain-file-is-a-video-file
+	// ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,codec_type -of default=nw=1 input.png
+	probeArgs := []string{
+		"ffprobe",
+		"-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=codec_name,codec_type",
+		"-of", "default=nw=1",
+		file,
+	}
+
+	cmd := exec.Command(probeArgs[0], probeArgs[1:]...)
+
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+
+	results, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Error running ffprobe: %v\n", err)
+		if stderr.Len() > 0 {
+			fmt.Printf("ffprobe stderr: %s\n", stderr.String())
+		}
+		return false
+	}
+	fmt.Println(string(results))
+	return true
+}

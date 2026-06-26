@@ -27,6 +27,17 @@ func NewParser() Parser {
 
 	if e := p.parser.Parse(nil); e != nil {
 		fmt.Println(e.Error())
+		// TEMP commented
+		// os.Exit(-1)
 	}
 	return p
+}
+
+// # Mode handler
+//
+// # Detect and handle different operating modes
+//
+// - convert -
+func ModeMenu(mode string) {
+	// "convert"
 }

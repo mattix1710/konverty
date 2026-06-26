@@ -169,6 +169,7 @@ func GetPSNR(orig string, processed string) PSNR {
 				lineBuf.Reset()
 			}
 		}
+		// processingProgress.Clear()
 	}()
 
 	if err := cmd.Start(); err != nil {
@@ -245,7 +246,7 @@ func processLineConverter(line string, progressRegex, resultsRegex *regexp.Regex
 	}
 }
 
-func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bool) bool {
+func Convert(orig string, out_file string, logger *log.Logger, crf string, preset string, ifOverwriteAll bool) bool {
 	// Check audio bitrate for a video - set maximum of 192k
 	audioBitrate := min(GetBitrate(orig), 192)
 
@@ -253,8 +254,8 @@ func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bo
 		"ffmpeg",
 		"-i", orig,
 		"-c:v", "libx265",
-		"-crf", "23",
-		"-preset", "fast",
+		"-crf", crf,
+		"-preset", preset,
 		"-c:a", "aac",
 		"-b:a", fmt.Sprintf("%dk", audioBitrate),
 		out_file,
@@ -264,7 +265,11 @@ func Convert(orig string, out_file string, logger *log.Logger, ifOverwriteAll bo
 	if checkPath(out_file) {
 		// if exists - ask user if overwrite the file (file will be removed before executing ffmpeg cmd)
 		if ifOverwriteAll {
-			logger.Warnf("File \"%s\" already exists. Overwriting...", out_file)
+			// logger.Warnf("File \"%s\" already exists. Overwriting...", out_file)
+			// TEMP:
+			logger.Warnf("File \"%s\" already exists. Skipping...", out_file)
+			// TODO-DEBUG: If there are 2 or more files with the same base name and different ext (file.mp4, File.avi) - check is caseinsensitive!
+			return false
 		} else {
 			fmt.Printf("File \"%s\" already exists. Overwrite? [y/N]: ", out_file)
 			var answer string
@@ -414,7 +419,7 @@ func BatchConvert(in_path string, out_path string, logger *log.Logger, ifOverwri
 	iterDirAndCopy(in_path, out_path, logger, ifOverwriteAll)
 }
 
-func BatchQualityAssessment(orig, processed string, logger *log.Logger) bool {
+func QualityAssessment(orig, processed string, logger *log.Logger) bool {
 	origFrameCount := GetTotalFrames(orig)
 	processedFrameCount := GetTotalFrames(processed)
 
@@ -443,4 +448,23 @@ func BatchQualityAssessment(orig, processed string, logger *log.Logger) bool {
 		}
 		return false
 	}
+}
+
+func BatchQualityAssessment(in_path string, out_path string, logger *log.Logger) {
+
+	// Check path
+	checkPath(out_path)
+	checkPath(in_path)
+	// then proceed
+
+	// Detect whether path is FILE or FOLDER
+}
+
+func GetFrame() {
+
+}
+
+func GetVideoFragment() {
+	// Eg. ffmpeg -ss 10:10 -i "Imprezy rodzinne 2001.avi" -t 15 -c:v libx265 -crf 18 -c:a aac -b:a 192k ".\avi-converted\Imprezy-rodzinne-2001-1.mp4"
+
 }

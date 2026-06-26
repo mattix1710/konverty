@@ -77,8 +77,21 @@ func iterDirAndCopy(dir string, copyDir string, logger *log.Logger, ifOverwriteA
 
 	logger.Debugf("Start iteration over dir %s", dir)
 
+	it := 0
+	counter := 0
+
 	files, _ := os.ReadDir(dir)
 	for _, subPath := range files {
+
+		if it%3 != 0 {
+			logger.Debug("Skipping...")
+			it += 1
+			continue
+		}
+		if counter >= 10 {
+			break
+		}
+
 		origSubPath := filepath.Join(dir, subPath.Name())
 		copySubPath := filepath.Join(copyDir, subPath.Name())
 
@@ -93,12 +106,14 @@ func iterDirAndCopy(dir string, copyDir string, logger *log.Logger, ifOverwriteA
 		if isVideo(subPath.Name()) {
 			logger.Infof("Converting video \"%s\" and saving to directory \"%s\"", subPath.Name(), copyDir)
 			copySubPathBaseName := filepath.Join(copyDir, fileNameWithoutExtension(subPath.Name()))
-			Convert(origSubPath, fmt.Sprintf("%s.mp4", copySubPathBaseName), logger, ifOverwriteAll)
+			Convert(origSubPath, fmt.Sprintf("%s.mp4", copySubPathBaseName), logger, "23", "fast", ifOverwriteAll) // TEMP: current default processing settings
 		} else {
 			// Copy other files to its appropriate locations
 			logger.Infof("Copying file \"%s\" to directory \"%s\"", subPath.Name(), copyDir)
 			copyFile(origSubPath, copySubPath)
 		}
+		it += 1
+		counter += 1
 	}
 }
 
